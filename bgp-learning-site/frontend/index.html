@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BGP Learning - Изучение протокола BGP</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Заголовок -->
+        <header class="header">
+            <h1>BGP Learning Platform</h1>
+            <p>Интерактивное изучение протокола BGP</p>
+        </header>
+
+        <div class="main-content">
+            <!-- Левая панель -->
+            <div class="left-panel">
+                <!-- Инструкции -->
+                <div class="instructions-panel">
+                    <h3>Урок 1: Установление BGP соседства</h3>
+                    <div id="lesson-instructions">
+                        <p>Загрузка инструкций...</p>
+                    </div>
+                </div>
+
+                <!-- Панель команд -->
+                <div class="command-panel">
+                    <h3>Командная строка</h3>
+                    <div class="router-selector">
+                        <label for="router-select">Маршрутизатор:</label>
+                        <select id="router-select">
+                            <option value="R1">R1 (192.168.1.1)</option>
+                            <option value="R2">R2 (192.168.1.2)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="command-input">
+                        <input type="text" id="command-input" placeholder="Введите BGP команду..." />
+                        <button id="execute-btn">Выполнить</button>
+                    </div>
+                    
+                    <div class="command-output" id="command-output">
+                        <p>Готов к вводу команд...</p>
+                    </div>
+                </div>
+
+                <!-- Контроль симуляции -->
+                <div class="simulation-controls">
+                    <h3>Управление симуляцией</h3>
+                    <div class="control-buttons">
+                        <button id="step-btn" disabled>Следующий шаг</button>
+                        <button id="pause-btn" disabled>Пауза</button>
+                        <button id="reset-btn">Сброс</button>
+                    </div>
+                    <div class="step-info">
+                        <span id="step-counter">Шаг: 0 / 0</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Правая панель - визуализация -->
+            <div class="right-panel">
+                <div class="visualization-panel">
+                    <h3>Топология сети</h3>
+                    <div class="network-canvas" id="network-canvas">
+                        <!-- Маршрутизаторы будут добавлены через JavaScript -->
+                    </div>
+                </div>
+
+                <!-- Информация о состоянии -->
+                <div class="status-panel">
+                    <h3>Состояние BGP</h3>
+                    <div class="router-status">
+                        <div class="router-info" id="r1-status">
+                            <h4>R1 (AS 65001)</h4>
+                            <p>IP: 192.168.1.1</p>
+                            <p>Состояние: <span class="bgp-state">Idle</span></p>
+                        </div>
+                        <div class="router-info" id="r2-status">
+                            <h4>R2 (AS 65002)</h4>
+                            <p>IP: 192.168.1.2</p>
+                            <p>Состояние: <span class="bgp-state">Idle</span></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Всплывающее окно для пакетов -->
+    <div class="packet-popup" id="packet-popup">
+        <div class="packet-content">
+            <h4>BGP Packet</h4>
+            <div class="packet-details" id="packet-details">
+                <!-- Детали пакета -->
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

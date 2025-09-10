@@ -1,0 +1,405 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f5f5f5;
+    color: #333;
+}
+
+.container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.header {
+    text-align: center;
+    margin-bottom: 30px;
+    padding: 20px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 10px;
+}
+
+.header h1 {
+    font-size: 2.5rem;
+    margin-bottom: 10px;
+}
+
+.main-content {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    height: calc(100vh - 200px);
+}
+
+/* Левая панель */
+.left-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.instructions-panel,
+.command-panel,
+.simulation-controls {
+    background: white;
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.instructions-panel {
+    flex: 1;
+    overflow-y: auto;
+}
+
+.instructions-panel h3 {
+    color: #667eea;
+    margin-bottom: 15px;
+}
+
+.instructions-panel ol {
+    padding-left: 20px;
+}
+
+.instructions-panel li {
+    margin-bottom: 10px;
+    line-height: 1.6;
+}
+
+.command-panel {
+    flex: 1;
+}
+
+.router-selector {
+    margin-bottom: 15px;
+}
+
+.router-selector label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+.router-selector select {
+    width: 100%;
+    padding: 8px;
+    border: 2px solid #ddd;
+    border-radius: 5px;
+    font-size: 14px;
+}
+
+.command-input {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.command-input input {
+    flex: 1;
+    padding: 10px;
+    border: 2px solid #ddd;
+    border-radius: 5px;
+    font-size: 14px;
+    font-family: 'Courier New', monospace;
+}
+
+.command-input button {
+    padding: 10px 20px;
+    background: #667eea;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.command-input button:hover {
+    background: #5a67d8;
+}
+
+.command-output {
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 5px;
+    padding: 15px;
+    min-height: 100px;
+    max-height: 200px;
+    overflow-y: auto;
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+}
+
+.simulation-controls {
+    flex: 0 0 auto;
+}
+
+.control-buttons {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.control-buttons button {
+    flex: 1;
+    padding: 10px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+#step-btn {
+    background: #28a745;
+    color: white;
+}
+
+#step-btn:hover:not(:disabled) {
+    background: #218838;
+}
+
+#pause-btn {
+    background: #ffc107;
+    color: #212529;
+}
+
+#pause-btn:hover:not(:disabled) {
+    background: #e0a800;
+}
+
+#reset-btn {
+    background: #dc3545;
+    color: white;
+}
+
+#reset-btn:hover {
+    background: #c82333;
+}
+
+.control-buttons button:disabled {
+    background: #6c757d;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.step-info {
+    text-align: center;
+    font-weight: bold;
+    color: #667eea;
+}
+
+/* Правая панель */
+.right-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.visualization-panel {
+    background: white;
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    flex: 1;
+}
+
+.network-canvas {
+    position: relative;
+    width: 100%;
+    height: 400px;
+    background: #f8f9fa;
+    border: 2px solid #e9ecef;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.router {
+    position: absolute;
+    width: 80px;
+    height: 80px;
+    background: #667eea;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: bold;
+    font-size: 14px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    transition: all 0.3s ease;
+}
+
+.router.active {
+    background: #28a745;
+    box-shadow: 0 0 20px rgba(40, 167, 69, 0.5);
+}
+
+.router-label {
+    position: absolute;
+    top: -25px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,0.8);
+    color: white;
+    padding: 5px 10px;
+    border-radius: 5px;
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.connection-line {
+    position: absolute;
+    height: 3px;
+    background: #ddd;
+    transform-origin: left center;
+    z-index: 1;
+}
+
+.connection-line.active {
+    background: #28a745;
+    box-shadow: 0 0 10px rgba(40, 167, 69, 0.5);
+}
+
+.packet {
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    background: #ffc107;
+    border-radius: 50%;
+    z-index: 10;
+    box-shadow: 0 2px 8px rgba(255, 193, 7, 0.6);
+    animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.2); }
+    100% { transform: scale(1); }
+}
+
+.packet-animation {
+    animation: movePacket 2s linear;
+}
+
+@keyframes movePacket {
+    from { left: var(--start-x); top: var(--start-y); }
+    to { left: var(--end-x); top: var(--end-y); }
+}
+
+.status-panel {
+    background: white;
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    flex: 0 0 auto;
+}
+
+.router-status {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.router-info {
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border-left: 4px solid #667eea;
+}
+
+.router-info h4 {
+    color: #667eea;
+    margin-bottom: 10px;
+}
+
+.router-info p {
+    margin: 5px 0;
+    font-size: 14px;
+}
+
+.bgp-state {
+    font-weight: bold;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+}
+
+.bgp-state.idle {
+    background: #f8f9fa;
+    color: #6c757d;
+}
+
+.bgp-state.opensent {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.bgp-state.established {
+    background: #d4edda;
+    color: #155724;
+}
+
+/* Всплывающее окно пакета */
+.packet-popup {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: white;
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    z-index: 1000;
+    display: none;
+    min-width: 300px;
+}
+
+.packet-popup.show {
+    display: block;
+}
+
+.packet-content h4 {
+    color: #667eea;
+    margin-bottom: 15px;
+}
+
+.packet-details {
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+/* Адаптивность */
+@media (max-width: 1200px) {
+    .main-content {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto;
+    }
+    
+    .router-status {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .container {
+        padding: 10px;
+    }
+    
+    .header h1 {
+        font-size: 2rem;
+    }
+    
+    .control-buttons {
+        flex-direction: column;
+    }
+    
+    .command-input {
+        flex-direction: column;
+    }
+}
