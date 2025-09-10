@@ -8,13 +8,31 @@ app = Flask(__name__)
 CORS(app)
 
 # Настройка логирования
+import os
+log_file = '/var/log/bgp-learning.log'
+
+# Создание обработчиков логов с проверкой прав
+handlers = [logging.StreamHandler()]
+
+# Добавляем файловый обработчик только если можем писать в файл
+try:
+    if os.path.exists(log_file):
+        # Проверяем, можем ли мы писать в существующий файл
+        if os.access(log_file, os.W_OK):
+            handlers.append(logging.FileHandler(log_file))
+    else:
+        # Пытаемся создать файл
+        log_dir = os.path.dirname(log_file)
+        if os.access(log_dir, os.W_OK):
+            handlers.append(logging.FileHandler(log_file))
+except (OSError, PermissionError):
+    # Если не можем работать с файлом, используем только консольный вывод
+    pass
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('/var/log/bgp-learning.log'),
-        logging.StreamHandler()
-    ]
+    handlers=handlers
 )
 logger = logging.getLogger(__name__)
 
