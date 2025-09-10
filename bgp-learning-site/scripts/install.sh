@@ -2,9 +2,14 @@
 
 # Скрипт автоматической установки и настройки BGP Learning Platform на Ubuntu 22.04
 # Автор: BGP Learning Team
-# Версия: 1.0
+# Версия: 1.1
 
 set -e
+
+# Переменные конфигурации
+DOMAIN_NAME=""
+CREATE_SSL="false"
+SSL_TYPE="none"
 
 # Цвета для вывода
 RED='\033[0;31m'
@@ -123,12 +128,43 @@ copy_application_files() {
     SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
     SOURCE_DIR="$(dirname "$SCRIPT_DIR")"
     
+    # Альтернативные пути для поиска исходных файлов
+    POSSIBLE_SOURCES=(
+        "$SOURCE_DIR"
+        "$(pwd)"
+        "/tmp/bgp-learning-site"
+        "/var/project/bgp_learn/bgp-learning-site"
+        "$(dirname "$(pwd)")"
+    )
+    
+    # Поиск правильного пути к исходным файлам
+    FOUND_SOURCE=""
+    for source_path in "${POSSIBLE_SOURCES[@]}"; do
+        if [[ -d "$source_path/backend" && -d "$source_path/frontend" ]]; then
+            FOUND_SOURCE="$source_path"
+            info "Найдены исходные файлы в: $FOUND_SOURCE"
+            break
+        fi
+    done
+    
+    if [[ -z "$FOUND_SOURCE" ]]; then
+        error "Не удалось найти исходные файлы (backend и frontend директории)"
+        error "Проверьте, что скрипт запускается из корневой директории проекта"
+        error "Или что файлы находятся в одной из следующих локаций:"
+        for source_path in "${POSSIBLE_SOURCES[@]}"; do
+            error "  - $source_path"
+        done
+        exit 1
+    fi
+    
     # Копирование backend
-    cp -r "$SOURCE_DIR/backend"/* /opt/bgp-learning/
+    info "Копирование backend из: $FOUND_SOURCE/backend"
+    cp -r "$FOUND_SOURCE/backend"/* /opt/bgp-learning/
     
     # Копирование frontend
     mkdir -p /var/www/bgp-learning
-    cp -r "$SOURCE_DIR/frontend"/* /var/www/bgp-learning/
+    info "Копирование frontend из: $FOUND_SOURCE/frontend"
+    cp -r "$FOUND_SOURCE/frontend"/* /var/www/bgp-learning/
     
     # Установка прав
     chown -R bgplearning:bgplearning /opt/bgp-learning
@@ -388,33 +424,156 @@ final_check() {
 
 # Вывод финальной информации
 show_final_info() {
+    update_final_info
+    
     echo
     echo "================================="
     success "Установка BGP Learning Platform завершена!"
     echo "================================="
     echo
-    info "Полезная информация:"
-    echo "• Веб-интерфейс: http://$(hostname -I | awk '{print $1}')/"
+    info "Конфигурация:"
+    echo "• Доменное имя: $DOMAIN_NAME"
+    echo "• SSL сертификат: $([[ "$CREATE_SSL" == "true" ]] && echo "включен ($SSL_TYPE)" || echo "отключен")"
+    echo
+    info "Доступ к платформе:"
+    echo "• Веб-интерфейс: $FINAL_URL"
+    if [[ "$CREATE_SSL" == "true" && "$SSL_TYPE" == "self-signed" ]]; then
+        warning "Самоподписанный сертификат - браузер покажет предупреждение"
+        echo "  Добавьте исключение в браузере для продолжения"
+    fi
+    echo
+    info "Системная информация:"
     echo "• Логи приложения: /var/log/bgp-learning.log"
     echo "• Логи Nginx: /var/log/nginx/bgp-learning-*.log"
     echo "• Статус сервисов: /usr/local/bin/bgp-learning-status"
+    if [[ "$CREATE_SSL" == "true" ]]; then
+        echo "• SSL сертификаты: /etc/ssl/certs/bgp-learning.* или /etc/letsencrypt/live/$DOMAIN_NAME/"
+    fi
     echo
     info "Управление сервисами:"
     echo "• Перезапуск BGP Learning: sudo systemctl restart bgp-learning"
     echo "• Перезапуск Nginx: sudo systemctl restart nginx"
     echo "• Просмотр логов: sudo journalctl -u bgp-learning -f"
+    if [[ "$CREATE_SSL" == "true" && "$SSL_TYPE" == "letsencrypt" ]]; then
+        echo "• Обновление SSL: sudo certbot renew"
+    fi
     echo
+    if [[ "$CREATE_SSL" != "true" ]]; then
+        warning "Рекомендации для продакшена:"
+        echo "• Настроить SSL сертификат для безопасности"
+        echo "• Использовать: $0 -d $DOMAIN_NAME --ssl letsencrypt"
+    fi
     warning "Не забудьте:"
-    echo "• Настроить DNS для вашего домена"
-    echo "• Установить SSL сертификат (certbot)"
+    if [[ "$DOMAIN_NAME" != "_" ]]; then
+        echo "• Убедиться, что DNS указывает на этот сервер"
+    fi
     echo "• Регулярно обновлять систему"
+    echo "• Мониторить логи на предмет ошибок"
     echo
+}
+
+# Функция обработки аргументов командной строки
+parse_arguments() {
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            -d|--domain)
+                DOMAIN_NAME="$2"
+                shift 2
+                ;;
+            --ssl)
+                CREATE_SSL="true"
+                SSL_TYPE="$2"
+                if [[ "$SSL_TYPE" != "self-signed" && "$SSL_TYPE" != "letsencrypt" ]]; then
+                    error "SSL тип должен быть 'self-signed' или 'letsencrypt'"
+                    exit 1
+                fi
+                shift 2
+                ;;
+            -h|--help)
+                show_help
+                exit 0
+                ;;
+            *)
+                error "Неизвестный параметр: $1"
+                show_help
+                exit 1
+                ;;
+        esac
+    done
+}
+
+# Функция показа справки
+show_help() {
+    echo "BGP Learning Platform Installer for Ubuntu 22.04"
+    echo "================================================"
+    echo
+    echo "Использование: $0 [ОПЦИИ]"
+    echo
+    echo "Опции:"
+    echo "  -d, --domain DOMAIN     Доменное имя для сайта (например: bgp.example.com)"
+    echo "  --ssl TYPE              Создать SSL сертификат (self-signed|letsencrypt)"
+    echo "  -h, --help              Показать эту справку"
+    echo
+    echo "Примеры:"
+    echo "  $0                                    # Установка без SSL на localhost"
+    echo "  $0 -d bgp.example.com                # Установка с доменом без SSL"
+    echo "  $0 -d bgp.example.com --ssl self-signed   # С самоподписанным сертификатом"
+    echo "  $0 -d bgp.example.com --ssl letsencrypt   # С Let's Encrypt сертификатом"
+    echo
+}
+
+# Функция интерактивного ввода конфигурации
+interactive_config() {
+    if [[ -z "$DOMAIN_NAME" ]]; then
+        echo
+        read -p "Введите доменное имя (или нажмите Enter для localhost): " DOMAIN_NAME
+        
+        if [[ -n "$DOMAIN_NAME" && "$DOMAIN_NAME" != "localhost" ]]; then
+            echo
+            echo "Выберите тип SSL сертификата:"
+            echo "1) Без SSL"
+            echo "2) Самоподписанный сертификат"
+            echo "3) Let's Encrypt (требует настроенный DNS)"
+            echo
+            read -p "Ваш выбор (1-3): " ssl_choice
+            
+            case $ssl_choice in
+                2)
+                    CREATE_SSL="true"
+                    SSL_TYPE="self-signed"
+                    ;;
+                3)
+                    CREATE_SSL="true"
+                    SSL_TYPE="letsencrypt"
+                    ;;
+                *)
+                    CREATE_SSL="false"
+                    SSL_TYPE="none"
+                    ;;
+            esac
+        fi
+    fi
+    
+    # Установка значений по умолчанию
+    if [[ -z "$DOMAIN_NAME" ]]; then
+        DOMAIN_NAME="_"
+    fi
 }
 
 # Основная функция установки
 main() {
     echo "BGP Learning Platform Installer for Ubuntu 22.04"
     echo "================================================"
+    echo
+    
+    parse_arguments "$@"
+    interactive_config
+    
+    # Показ конфигурации
+    echo
+    info "Конфигурация установки:"
+    echo "• Доменное имя: $DOMAIN_NAME"
+    echo "• SSL сертификат: $([[ "$CREATE_SSL" == "true" ]] && echo "$SSL_TYPE" || echo "отключен")"
     echo
     
     check_root
@@ -426,12 +585,135 @@ main() {
     copy_application_files
     create_systemd_service
     configure_nginx
+    setup_ssl_certificates
     setup_logging
     configure_firewall
     create_monitoring_script
     start_services
     final_check
     show_final_info
+}
+
+# Настройка SSL сертификатов
+setup_ssl_certificates() {
+    if [[ "$CREATE_SSL" != "true" ]]; then
+        info "SSL сертификаты не настраиваются"
+        return 0
+    fi
+    
+    info "Настройка SSL сертификатов ($SSL_TYPE)..."
+    
+    if [[ "$SSL_TYPE" == "self-signed" ]]; then
+        create_self_signed_certificate
+    elif [[ "$SSL_TYPE" == "letsencrypt" ]]; then
+        create_letsencrypt_certificate
+    fi
+}
+
+# Создание самоподписанного сертификата
+create_self_signed_certificate() {
+    info "Создание самоподписанного SSL сертификата..."
+    
+    # Создание директорий для сертификатов
+    mkdir -p /etc/ssl/certs /etc/ssl/private
+    
+    # Генерация приватного ключа
+    openssl genrsa -out /etc/ssl/private/bgp-learning.key 2048
+    
+    # Создание конфигурационного файла для сертификата
+    cat > /tmp/ssl.conf << EOF
+[req]
+distinguished_name = req_distinguished_name
+req_extensions = v3_req
+prompt = no
+
+[req_distinguished_name]
+C = RU
+ST = Moscow
+L = Moscow
+O = BGP Learning Platform
+OU = IT Department
+CN = $DOMAIN_NAME
+
+[v3_req]
+keyUsage = keyEncipherment, dataEncipherment
+extendedKeyUsage = serverAuth
+subjectAltName = @alt_names
+
+[alt_names]
+DNS.1 = $DOMAIN_NAME
+DNS.2 = www.$DOMAIN_NAME
+IP.1 = 127.0.0.1
+EOF
+    
+    # Генерация сертификата
+    openssl req -new -x509 -key /etc/ssl/private/bgp-learning.key \
+        -out /etc/ssl/certs/bgp-learning.crt -days 365 \
+        -config /tmp/ssl.conf -extensions v3_req
+    
+    # Установка прав доступа
+    chmod 600 /etc/ssl/private/bgp-learning.key
+    chmod 644 /etc/ssl/certs/bgp-learning.crt
+    
+    # Удаление временного файла
+    rm -f /tmp/ssl.conf
+    
+    success "Самоподписанный SSL сертификат создан"
+    warning "Браузеры будут показывать предупреждение о безопасности"
+}
+
+# Создание Let's Encrypt сертификата
+create_letsencrypt_certificate() {
+    info "Создание Let's Encrypt SSL сертификата..."
+    
+    # Проверка доступности домена
+    if ! ping -c 1 "$DOMAIN_NAME" > /dev/null 2>&1; then
+        warning "Домен $DOMAIN_NAME недоступен. Убедитесь, что DNS настроен правильно."
+        read -p "Продолжить создание сертификата? (y/N): " continue_cert
+        if [[ "$continue_cert" != "y" && "$continue_cert" != "Y" ]]; then
+            info "Пропуск создания Let's Encrypt сертификата"
+            return 0
+        fi
+    fi
+    
+    # Временная конфигурация Nginx для проверки домена
+    systemctl stop nginx || true
+    
+    # Создание Let's Encrypt сертификата
+    if certbot certonly --standalone -d "$DOMAIN_NAME" --non-interactive --agree-tos \
+        --email "admin@$DOMAIN_NAME" --preferred-challenges http; then
+        
+        # Обновление путей к сертификатам в конфигурации Nginx
+        sed -i "s|/etc/ssl/certs/bgp-learning.crt|/etc/letsencrypt/live/$DOMAIN_NAME/fullchain.pem|g" \
+            /etc/nginx/sites-available/bgp-learning
+        sed -i "s|/etc/ssl/private/bgp-learning.key|/etc/letsencrypt/live/$DOMAIN_NAME/privkey.pem|g" \
+            /etc/nginx/sites-available/bgp-learning
+        
+        # Настройка автоматического обновления сертификата
+        (crontab -l 2>/dev/null; echo "0 12 * * * /usr/bin/certbot renew --quiet && systemctl reload nginx") | crontab -
+        
+        success "Let's Encrypt SSL сертификат создан"
+    else
+        error "Ошибка создания Let's Encrypt сертификата"
+        warning "Переключаемся на самоподписанный сертификат"
+        create_self_signed_certificate
+    fi
+}
+
+# Обновление информации о финальном результате
+update_final_info() {
+    local protocol="http"
+    local port=""
+    
+    if [[ "$CREATE_SSL" == "true" ]]; then
+        protocol="https"
+    fi
+    
+    if [[ "$DOMAIN_NAME" == "_" ]]; then
+        FINAL_URL="$protocol://$(hostname -I | awk '{print $1}')/"
+    else
+        FINAL_URL="$protocol://$DOMAIN_NAME/"
+    fi
 }
 
 # Запуск установки
